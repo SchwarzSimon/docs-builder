@@ -42,6 +42,6 @@ export const useSearchQuery = () => {
         },
         enabled: !!trimmedSearchTerm && trimmedSearchTerm.length >= 1,
         refetchOnWindowFocus: false,
-        staleTime: 1000 * 60 * 10, // 10 minutes
+        staleTime: 0
     })
 }

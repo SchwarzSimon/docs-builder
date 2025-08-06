@@ -72,7 +72,14 @@ public abstract class ElasticsearchMarkdownExporterBase<TChannelOptions, TChanne
 		$$"""
 		{
 		  "properties": {
-		    "title": { "type": "text" },
+		    "title": { 
+		      "type": "text",
+		      "fields": {
+		        "keyword": {
+		          "type": "keyword"
+		        }
+		      }
+		    },
 		    "body": { "type": "text" }
 		    {{(!string.IsNullOrWhiteSpace(inferenceId) ? AbstractInferenceMapping(inferenceId) : AbstractMapping())}}
 		  }

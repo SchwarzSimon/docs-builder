@@ -79,6 +79,7 @@ export const SearchResults = () => {
                             color="text"
                             size="s"
                             fullWidth
+                            href={"https://www.elastic.co" + result.url}
                         >
                             <div
                                 css={css`
@@ -97,6 +98,8 @@ export const SearchResults = () => {
                                     color="subdued"
                                 >
                                     {trimDescription(result.description)}
+                                    ({result.score})
+                                    {result.url}
                                 </EuiText>
                             </div>
                         </EuiButton>
