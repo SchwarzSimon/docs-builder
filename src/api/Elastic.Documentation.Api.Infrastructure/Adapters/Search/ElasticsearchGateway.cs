@@ -84,19 +84,19 @@ public class ElasticsearchGateway : ISearchGateway
 		shouldQueries.Add(sh => sh.FunctionScore(fs => fs
 			.Query(q => q.Bool(b => b
 				.Should(
-					// Highest priority: exact prefix match
+					// Highest priority: exact prefix match (reduced boost)
 					s => s.Prefix(p => p
 						.Field("title.keyword")
 						.Value(searchQuery)
 						.CaseInsensitive(true)
-						.Boost(1100.0f)
+						.Boost(300.0f)
 					),
 
-					// High priority: bool prefix matching
+					// High priority: bool prefix matching (reduced boost)
 					s => s.MatchBoolPrefix(m => m
 						.Field(f => f.Title)
 						.Query(searchQuery)
-						.Boost(1000.0f)
+						.Boost(250.0f)
 					),
 
 					// Medium priority: all terms must match
@@ -104,7 +104,28 @@ public class ElasticsearchGateway : ISearchGateway
 						.Field(f => f.Title)
 						.Query(searchQuery)
 						.Operator(Operator.And)
-						.Boost(500.0f)
+						.Boost(200.0f)
+					),
+
+					// True semantic search on Abstract (higher boost than before)
+					s => s.Semantic(sem => sem
+						.Field("abstract")
+						.Query(searchQuery)
+						.Boost(200.0f)
+					),
+
+					// Semantic search on semantic_text field
+					s => s.Match(m => m
+						.Field("semantic_text")
+						.Query(searchQuery)
+						.Boost(100.0f)
+					),
+
+					// Fallback: match on Abstract for non-semantic indices
+					s => s.Match(m => m
+						.Field(f => f.Abstract)
+						.Query(searchQuery)
+						.Boost(75.0f)
 					),
 
 					// Lower priority: fuzzy matching for typos/abbreviations
@@ -236,6 +257,10 @@ public class ElasticsearchGateway : ISearchGateway
 		// Test 404 exclusion specifically
 		Console.WriteLine("\n=== DEBUGGING: Testing 404 exclusion ===");
 		await TestNotFoundExclusion(ctx);
+
+		// Test semantic search specifically
+		Console.WriteLine("\n=== DEBUGGING: Testing semantic search ===");
+		await DebugSemanticSearch(query, ctx);
 
 		if (response.ApiCallDetails?.OriginalException != null)
 		{
@@ -405,6 +430,57 @@ public class ElasticsearchGateway : ISearchGateway
 		}
 	}
 
+	private async Task DebugSemanticSearch(string query, Cancel ctx)
+	{
+		try
+		{
+			Console.WriteLine($"Testing semantic search for '{query}'...");
+
+			// Test semantic search directly
+			var semanticResponse = await _client.SearchAsync<DocumentDto>(s => s
+				.Indices(_elasticsearchOptions.IndexName)
+				.Query(q => q.Semantic(sem => sem
+					.Field("abstract")
+					.Query(query)
+				))
+				.Size(5), ctx);
+
+			Console.WriteLine($"Semantic search found: {semanticResponse.Total} documents");
+
+			if (semanticResponse.Hits != null)
+			{
+				foreach (var hit in semanticResponse.Hits.Take(5))
+				{
+					var doc = hit.Source;
+					Console.WriteLine($"  Score: {hit.Score:F2} | Title: '{doc?.Title}' | URL: '{doc?.Url}'");
+				}
+			}
+
+			// Compare with regular match query
+			var matchResponse = await _client.SearchAsync<DocumentDto>(s => s
+				.Indices(_elasticsearchOptions.IndexName)
+				.Query(q => q.Match(m => m
+					.Field(f => f.Title)
+					.Query(query)
+				))
+				.Size(5), ctx);
+
+			Console.WriteLine($"Match query found: {matchResponse.Total} documents");
+
+			if (matchResponse.Hits != null)
+			{
+				foreach (var hit in matchResponse.Hits.Take(5))
+				{
+					var doc = hit.Source;
+					Console.WriteLine($"  Score: {hit.Score:F2} | Title: '{doc?.Title}' | URL: '{doc?.Url}'");
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Semantic search debug failed: {ex.Message}");
+		}
+	}
 
 	private static (int TotalHits, List<SearchResultItem> Results) ProcessSearchResponse(SearchResponse<DocumentDto> response)
 	{
