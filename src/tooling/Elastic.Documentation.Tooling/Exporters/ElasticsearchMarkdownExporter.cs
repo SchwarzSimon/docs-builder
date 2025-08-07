@@ -27,7 +27,7 @@ public class ElasticsearchMarkdownExporter(ILoggerFactory logFactory, IDiagnosti
 	{
 		GetMapping = () => CreateMapping(null),
 		IndexFormat = "documentation{0:yyyy.MM.dd.HHmmss}",
-		ActiveSearchAlias = "documentation"
+		ActiveSearchAlias = "documentation",
 	};
 
 	/// <inheritdoc />
@@ -72,13 +72,24 @@ public abstract class ElasticsearchMarkdownExporterBase<TChannelOptions, TChanne
 		$$"""
 		{
 		  "properties": {
-		    "title": { 
+		    "title": {
 		      "type": "text",
 		      "fields": {
 		        "keyword": {
 		          "type": "keyword"
 		        }
 		      }
+		    },
+		    "url": {
+		      "type": "text",
+		      "fields": {
+		        "keyword": {
+		          "type": "keyword"
+		        }
+		      }
+		    },
+		    "url_segment_count": {
+		      "type": "integer"
 		    },
 		    "body": { "type": "text" }
 		    {{(!string.IsNullOrWhiteSpace(inferenceId) ? AbstractInferenceMapping(inferenceId) : AbstractMapping())}}
@@ -201,6 +212,7 @@ public abstract class ElasticsearchMarkdownExporterBase<TChannelOptions, TChanne
 				? body[..Math.Min(body.Length, 400)]
 				: string.Empty,
 			Applies = fileContext.SourceFile.YamlFrontMatter?.AppliesTo,
+			UrlSegmentCount = url.Split('/', StringSplitOptions.RemoveEmptyEntries).Length
 		};
 		return await TryWrite(doc, ctx);
 	}
