@@ -3,11 +3,17 @@ import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from '@uidotdev/usehooks'
 import * as z from 'zod'
 
+const SearchResultItemParent = z.object({
+    url: z.string(),
+    title: z.string(),
+})
+
 const SearchResultItem = z.object({
     url: z.string(),
     title: z.string(),
     description: z.string(),
     score: z.number(),
+    parents: z.array(SearchResultItemParent),
 })
 
 const SearchResponse = z.object({
@@ -42,6 +48,6 @@ export const useSearchQuery = () => {
         },
         enabled: !!trimmedSearchTerm && trimmedSearchTerm.length >= 1,
         refetchOnWindowFocus: false,
-        staleTime: 0
+        staleTime: 1000 * 60 * 5, // 5 minutes
     })
 }

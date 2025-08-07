@@ -8,10 +8,12 @@ using Elastic.Documentation.Configuration;
 using Elastic.Documentation.Diagnostics;
 using Elastic.Documentation.Search;
 using Elastic.Documentation.Serialization;
+using Elastic.Documentation.Site.Navigation;
 using Elastic.Ingest.Elasticsearch;
 using Elastic.Ingest.Elasticsearch.Catalog;
 using Elastic.Ingest.Elasticsearch.Semantic;
 using Elastic.Markdown.Exporters;
+using Elastic.Markdown.IO;
 using Elastic.Transport;
 using Elastic.Transport.Products.Elasticsearch;
 using Microsoft.Extensions.Logging;
@@ -200,8 +202,17 @@ public abstract class ElasticsearchMarkdownExporterBase<TChannelOptions, TChanne
 
 		var url = file.Url;
 
+		if (url is "/docs" or "/docs/404")
+		{
+			// Skip the root and 404 pages
+			_logger.LogInformation("Skipping export for {Url}", url);
+			return true;
+		}
+
+		IPositionalNavigation navigation = fileContext.DocumentationSet;
+
 		//use LLM text if it was already provided (because we run with both llm and elasticsearch output)
-		var body = fileContext.LLMText ??= LlmMarkdownExporter.ConvertToLlmMarkdown(fileContext.Document, fileContext.BuildContext);
+		var body = fileContext.LLMText ??= LlmMarkdownExporter.ConvertToLlmMarkdown(document, fileContext.BuildContext);
 		var doc = new DocumentationDocument
 		{
 			Title = file.Title,
@@ -212,7 +223,12 @@ public abstract class ElasticsearchMarkdownExporterBase<TChannelOptions, TChanne
 				? body[..Math.Min(body.Length, 400)]
 				: string.Empty,
 			Applies = fileContext.SourceFile.YamlFrontMatter?.AppliesTo,
-			UrlSegmentCount = url.Split('/', StringSplitOptions.RemoveEmptyEntries).Length
+			UrlSegmentCount = url.Split('/', StringSplitOptions.RemoveEmptyEntries).Length,
+			Parents = navigation.GetParentsOfMarkdownFile(file).Select(i => new ParentDocument
+			{
+				Title = i.NavigationTitle,
+				Url = i.Url
+			}).Reverse().ToArray(),
 		};
 		return await TryWrite(doc, ctx);
 	}

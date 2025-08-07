@@ -37,7 +37,7 @@ public record SearchRequest
 {
 	public required string Query { get; init; }
 	public int PageNumber { get; init; } = 1;
-	public int PageSize { get; init; } = 10;
+	public int PageSize { get; init; } = 5;
 }
 
 public record SearchResponse
@@ -46,10 +46,17 @@ public record SearchResponse
 	public required int TotalResults { get; init; }
 }
 
+public record SearchResultItemParent
+{
+	public required string Title { get; init; }
+	public required string Url { get; init; }
+}
+
 public record SearchResultItem
 {
 	public required string Url { get; init; }
 	public required string Title { get; init; }
 	public required string Description { get; init; }
+	public required SearchResultItemParent[] Parents { get; init; }
 	public float Score { get; init; }
 }

@@ -1,12 +1,12 @@
 import { useSearchTerm } from '../search.store'
 import { useSearchQuery } from './useSearchQuery'
 import {
-    EuiButton,
+    EuiButton, EuiLink,
     EuiLoadingSpinner,
     EuiSpacer,
     EuiText,
-    useEuiTheme,
-} from '@elastic/eui'
+    useEuiTheme
+} from "@elastic/eui";
 import { css } from '@emotion/react'
 import * as React from 'react'
 
@@ -63,7 +63,7 @@ export const SearchResults = () => {
     return (
         <div
             css={`
-                li:not(:first-child) {
+                &>ul>li:not(:first-child) {
                     margin-top: ${euiTheme.size.xs};
                 }
             `}
@@ -73,13 +73,8 @@ export const SearchResults = () => {
             <ul>
                 {data.results.map((result) => (
                     <li key={result.url}>
-                        <EuiButton
+                        <div
                             css={buttonCss}
-                            iconType="document"
-                            color="text"
-                            size="s"
-                            fullWidth
-                            href={"https://www.elastic.co" + result.url}
                         >
                             <div
                                 css={css`
@@ -87,22 +82,23 @@ export const SearchResults = () => {
                                     text-align: left;
                                 `}
                             >
-                                {result.title}
+                                <EuiLink href={result.url}>{result.title}</EuiLink>
+                                
                                 <EuiSpacer size="xs" />
-                                <EuiText
+                                
+                                <ul
                                     css={css`
-                                        text-wrap: pretty;
+                                        display: flex;
+                                        gap: ${euiTheme.size.s};
+                                        list-style: none;
                                     `}
-                                    textAlign="left"
-                                    size="xs"
-                                    color="subdued"
                                 >
-                                    {trimDescription(result.description)}
-                                    ({result.score})
-                                    {result.url}
-                                </EuiText>
+                                    {result.parents.slice(1).map((parent) => (
+                                        <li key={parent.url}><EuiButton href={parent.url} size="s" color="text">{parent.title}</EuiButton></li>
+                                    ))}
+                                </ul>
                             </div>
-                        </EuiButton>
+                        </div>
                         {/*<EuiIcon type="document" color="subdued" />*/}
                         {/*<EuiText>{result.title}</EuiText>*/}
                     </li>
