@@ -179,6 +179,7 @@ jobs:
       # we run our artifact directly, please use the prebuild
       # elastic/docs-builder@main GitHub Action for all other repositories!
       - name: Build documentation
+        if: always()
         run: |
           dotnet run --project src/tooling/docs-builder -- --strict --path-prefix "${PATH_PREFIX}"
 
