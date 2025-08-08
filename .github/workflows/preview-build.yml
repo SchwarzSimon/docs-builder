@@ -179,6 +179,8 @@ jobs:
       - name: Build documentation1
         if: always()
         run: |
+          echo "Result: ${{ steps.deployment.outputs.result }}"
+          echo "Env: ${{ env.MATCH }}"
           env
       - name: Build documentation2
         if: env.MATCH == 'true'
