@@ -115,14 +115,6 @@ public class ElasticsearchGateway : ISearchGateway
 						.Query(searchQuery)
 						.Boost(200.0f)
 					),
-
-					// Semantic search on semantic_text field
-					s => s.Match(m => m
-						.Field("semantic_text")
-						.Query(searchQuery)
-						.Boost(100.0f)
-					),
-
 					// Fallback: match on Abstract for non-semantic indices
 					s => s.Match(m => m
 						.Field(f => f.Abstract)
@@ -150,18 +142,18 @@ public class ElasticsearchGateway : ISearchGateway
 				)
 				.MinimumShouldMatch(1)
 			))
-			.Functions(
-				// Boost based on URL segment count: documents with fewer segments (closer to the root)
-				// are considered more important and get a higher score.
-				f => f.FieldValueFactor(fvf => fvf
-						.Field("url_segment_count")
-						.Factor(10.0f) // Positive factor
-						.Modifier(FieldValueFactorModifier.Reciprocal) // Score = 10 / segments
-						.Missing(5) // Default value if the field is missing
-				)
-			)
-			.BoostMode(FunctionBoostMode.Multiply) // Multiply the function score with the query score
-			.ScoreMode(FunctionScoreMode.Multiply)
+		// .Functions(
+		// 	// Boost based on URL segment count: documents with fewer segments (closer to the root)
+		// 	// are considered more important and get a higher score.
+		// 	f => f.FieldValueFactor(fvf => fvf
+		// 			.Field("url_segment_count")
+		// 			.Factor(1.2f) // Positive factor
+		// 			.Modifier(FieldValueFactorModifier.Reciprocal) // Score = 10 / segments
+		// 			.Missing(5) // Default value if the field is missing
+		// 	)
+		// )
+		// .BoostMode(FunctionBoostMode.Multiply) // Multiply the function score with the query score
+		// .ScoreMode(FunctionScoreMode.Multiply)
 		));
 
 		_logger.LogDebug("Added {ShouldQueriesCount} query clauses", shouldQueries.Count);

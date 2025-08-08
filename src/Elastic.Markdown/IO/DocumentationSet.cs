@@ -76,8 +76,6 @@ public interface IPositionalNavigation
 		var parent = current.Parent;
 		do
 		{
-			if (parent == current)
-				continue;
 			if (parent is null)
 				continue;
 			parents.Add(parent);

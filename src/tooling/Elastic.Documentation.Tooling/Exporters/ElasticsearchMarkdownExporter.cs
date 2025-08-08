@@ -21,7 +21,7 @@ using Microsoft.Extensions.Logging;
 namespace Elastic.Documentation.Tooling.Exporters;
 
 public class ElasticsearchMarkdownExporter(ILoggerFactory logFactory, IDiagnosticsCollector collector, DocumentationEndpoints endpoints)
-	: ElasticsearchMarkdownExporterBase<CatalogIndexChannelOptions<DocumentationDocument>, CatalogIndexChannel<DocumentationDocument>>
+	: ElasticsearchMarkdownExporterBase<CatalogIndexChannelOptions<DocumentationDocument>, DocumentationCatalogIndexChannel>
 		(logFactory, collector, endpoints)
 {
 	/// <inheritdoc />
@@ -29,14 +29,15 @@ public class ElasticsearchMarkdownExporter(ILoggerFactory logFactory, IDiagnosti
 	{
 		GetMapping = () => CreateMapping(null),
 		IndexFormat = "documentation{0:yyyy.MM.dd.HHmmss}",
-		ActiveSearchAlias = "documentation",
+		ActiveSearchAlias = "documentation"
 	};
 
 	/// <inheritdoc />
-	protected override CatalogIndexChannel<DocumentationDocument> NewChannel(CatalogIndexChannelOptions<DocumentationDocument> options) => new(options);
+	protected override DocumentationCatalogIndexChannel NewChannel(CatalogIndexChannelOptions<DocumentationDocument> options) => new(options);
 }
+
 public class ElasticsearchMarkdownSemanticExporter(ILoggerFactory logFactory, IDiagnosticsCollector collector, DocumentationEndpoints endpoints)
-	: ElasticsearchMarkdownExporterBase<SemanticIndexChannelOptions<DocumentationDocument>, SemanticIndexChannel<DocumentationDocument>>
+	: ElasticsearchMarkdownExporterBase<SemanticIndexChannelOptions<DocumentationDocument>, DocumentationSemanticIndexChannel>
 		(logFactory, collector, endpoints)
 {
 	/// <inheritdoc />
@@ -46,11 +47,44 @@ public class ElasticsearchMarkdownSemanticExporter(ILoggerFactory logFactory, ID
 		IndexFormat = "semantic-documentation-{0:yyyy.MM.dd.HHmmss}",
 		ActiveSearchAlias = "semantic-documentation",
 		IndexNumThreads = IndexNumThreads,
-		InferenceCreateTimeout = TimeSpan.FromMinutes(4),
+		InferenceCreateTimeout = TimeSpan.FromMinutes(4)
 	};
-
 	/// <inheritdoc />
-	protected override SemanticIndexChannel<DocumentationDocument> NewChannel(SemanticIndexChannelOptions<DocumentationDocument> options) => new(options);
+	protected override DocumentationSemanticIndexChannel NewChannel(SemanticIndexChannelOptions<DocumentationDocument> options) => new(options);
+}
+
+// Custom channel classes that override the settings
+public class DocumentationCatalogIndexChannel(CatalogIndexChannelOptions<DocumentationDocument> options) : CatalogIndexChannel<DocumentationDocument>(options)
+{
+	protected override IReadOnlyDictionary<string, string> GetDefaultComponentIndexSettings()
+	{
+		var settings = new Dictionary<string, string>
+		{
+			["analysis.analyzer.my_analyzer.tokenizer"] = "whitespace",
+			["analysis.analyzer.my_analyzer.filter.0"] = "synonyms_filter",
+			["analysis.filter.synonyms_filter.type"] = "synonym",
+			["analysis.filter.synonyms_filter.synonyms_set"] = "docs",
+			["analysis.filter.synonyms_filter.updateable"] = "true",
+		};
+		return settings;
+	}
+}
+
+public class DocumentationSemanticIndexChannel(SemanticIndexChannelOptions<DocumentationDocument> options)
+	: SemanticIndexChannel<DocumentationDocument>(options)
+{
+	protected override IReadOnlyDictionary<string, string> GetDefaultComponentIndexSettings()
+	{
+		var settings = new Dictionary<string, string>
+		{
+			["analysis.analyzer.my_analyzer.tokenizer"] = "whitespace",
+			["analysis.analyzer.my_analyzer.filter.0"] = "synonyms_filter",
+			["analysis.filter.synonyms_filter.type"] = "synonym",
+			["analysis.filter.synonyms_filter.synonyms_set"] = "docs",
+			["analysis.filter.synonyms_filter.updateable"] = "true",
+		};
+		return settings;
+	}
 }
 
 public abstract class ElasticsearchMarkdownExporterBase<TChannelOptions, TChannel>(
@@ -76,6 +110,7 @@ public abstract class ElasticsearchMarkdownExporterBase<TChannelOptions, TChanne
 		  "properties": {
 		    "title": {
 		      "type": "text",
+		      "search_analyzer": "my_analyzer",
 		      "fields": {
 		        "keyword": {
 		          "type": "keyword"
@@ -93,7 +128,9 @@ public abstract class ElasticsearchMarkdownExporterBase<TChannelOptions, TChanne
 		    "url_segment_count": {
 		      "type": "integer"
 		    },
-		    "body": { "type": "text" }
+		    "body": {
+		      "type": "text"
+		    }
 		    {{(!string.IsNullOrWhiteSpace(inferenceId) ? AbstractInferenceMapping(inferenceId) : AbstractMapping())}}
 		  }
 		}
@@ -103,18 +140,18 @@ public abstract class ElasticsearchMarkdownExporterBase<TChannelOptions, TChanne
 		// langugage=json
 		"""
 		, "abstract": {
-			"type": "text",
+			"type": "text"
 		}
 		""";
 
 	private static string AbstractInferenceMapping(string inferenceId) =>
 		// langugage=json
 		$$"""
-		, "abstract": {
-			"type": "semantic_text",
-			"inference_id": "{{inferenceId}}"
-		}
-		""";
+		  , "abstract": {
+		  	"type": "semantic_text",
+		  	"inference_id": "{{inferenceId}}"
+		  }
+		  """;
 
 	public async ValueTask StartAsync(Cancel ctx = default)
 	{
@@ -132,6 +169,7 @@ public abstract class ElasticsearchMarkdownExporterBase<TChannelOptions, TChanne
 		};
 
 		var transport = new DistributedTransport(configuration);
+
 		//The max num threads per allocated node, from testing its best to limit our max concurrency
 		//producing to this number as well
 		var options = NewOptions(transport);

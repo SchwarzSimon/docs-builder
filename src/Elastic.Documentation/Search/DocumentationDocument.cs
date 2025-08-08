@@ -12,6 +12,7 @@ public record ParentDocument
 {
 	[JsonPropertyName("title")]
 	public string? Title { get; set; }
+
 	[JsonPropertyName("url")]
 	public string? Url { get; set; }
 }

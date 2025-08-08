@@ -28,7 +28,9 @@ public class SearchUsecase(ISearchGateway searchGateway)
 		return new SearchResponse
 		{
 			Results = results,
-			TotalResults = totalHits
+			TotalResults = totalHits,
+			PageNumber = request.PageNumber,
+			PageSize = request.PageSize,
 		};
 	}
 }
@@ -44,6 +46,11 @@ public record SearchResponse
 {
 	public required IEnumerable<SearchResultItem> Results { get; init; }
 	public required int TotalResults { get; init; }
+	public required int PageNumber { get; init; }
+	public required int PageSize { get; init; }
+	public int PageCount => TotalResults > 0
+				? (int)Math.Ceiling((double)TotalResults / PageSize)
+				: 0;
 }
 
 public record SearchResultItemParent
