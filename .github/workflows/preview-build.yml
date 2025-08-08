@@ -176,6 +176,19 @@ jobs:
         if: env.MATCH == 'true' && (github.repository == 'SchwarzSimon/docs-builder' && steps.deployment.outputs.result)
         uses: elastic/docs-builder/.github/actions/bootstrap@main
 
+      - name: Build documentation1
+        if: always()
+        run: |
+          env
+      - name: Build documentation2
+        if: env.MATCH == 'true'
+        run: |
+          echo match
+      - name: Build documentation3
+        if: steps.deployment.outputs.result
+        run: |
+          echo deplres
+          
       # we run our artifact directly, please use the prebuild
       # elastic/docs-builder@main GitHub Action for all other repositories!
       - name: Build documentation
